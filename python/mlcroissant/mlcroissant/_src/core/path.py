@@ -30,7 +30,7 @@ class Path:
     @property
     def filename(self) -> str:
         """The name of the file if it is a file."""
-        return self.filepath.name
+        return epath.Path(self.filepath).name
 
 
 def get_fullpath(file: epath.Path, data_dir: epath.Path) -> pathlib.PurePath:

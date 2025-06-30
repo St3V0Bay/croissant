@@ -7,15 +7,19 @@ import tempfile
 from unittest import mock
 
 from etils import epath
+import numpy as np
 import pandas as pd
 import pandas.testing as pd_testing
+import pydicom
 import pytest
 
+from mlcroissant._src.core.constants import EncodingFormat
 from mlcroissant._src.core.path import Path
 from mlcroissant._src.operation_graph.operations.read import _read_arff_file
 from mlcroissant._src.operation_graph.operations.read import _reading_method
 from mlcroissant._src.operation_graph.operations.read import Read
 from mlcroissant._src.operation_graph.operations.read import ReadingMethod
+from mlcroissant._src.structure_graph.nodes.file_object import FileObject
 from mlcroissant._src.structure_graph.nodes.source import Extract
 from mlcroissant._src.structure_graph.nodes.source import FileProperty
 from mlcroissant._src.structure_graph.nodes.source import Source
@@ -36,6 +40,12 @@ ARFF_CONTENT = """@relation foo
 """
 
 
+@pytest.fixture
+def file_object_with_missing_encoding_format():
+    """FileObject with a missing encoding format."""
+    return create_test_file_object(encoding_formats=None)
+
+
 def test_str_representation():
     operation = Read(
         operations=operations(),
@@ -47,7 +57,9 @@ def test_str_representation():
 
 
 def test_reading_arff():
-    filepath = io.StringIO(ARFF_CONTENT)
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+        f.write(ARFF_CONTENT)
+        filepath = f.name
     actual_df = _read_arff_file(filepath)
     data = [(5.0, 3.25, b"blue"), (4.5, 3.75, b"green"), (3.0, 4.0, b"red")]
     expected_df = pd.DataFrame(data, columns=["width", "height", "color"])
@@ -107,6 +119,54 @@ def test_reading_method():
     assert _reading_method(empty_file_object, (filename,)) == ReadingMethod.NONE
     with pytest.raises(ValueError):
         _reading_method(empty_file_object, (content_field, lines_field))
+
+
+@pytest.mark.parametrize(
+    ("encoding_format"),
+    [
+        (EncodingFormat.DICOM),
+    ],
+)
+def test_read_dicom_file(
+    encoding_format: str,
+    tmpdir: epath.Path,
+    file_object_with_missing_encoding_format: FileObject,
+):
+    filepath = tmpdir / "file.dcm"
+    # Create a dummy DICOM file
+    pixel_array = np.array([[1, 2], [3, 4]], dtype=np.uint8)
+    file_meta = pydicom.dataset.FileMetaDataset()
+    file_meta.MediaStorageSOPClassUID = pydicom.uid.ExplicitVRLittleEndian
+    file_meta.MediaStorageSOPInstanceUID = pydicom.uid.generate_uid()
+    file_meta.TransferSyntaxUID = pydicom.uid.ExplicitVRLittleEndian
+
+    ds = pydicom.dataset.FileDataset(
+        filepath,
+        {},
+        file_meta=file_meta,
+        preamble=b"\0" * 128,
+    )
+    ds.PatientName = "Test^Patient"
+    ds.add_new(0x00280002, "US", 1)  # Samples per Pixel
+    ds.add_new(0x00280004, "CS", "MONOCHROME2")  # Photometric Interpretation
+    ds.add_new(0x00280010, "US", 2)  # Rows
+    ds.add_new(0x00280011, "US", 2)  # Columns
+    ds.add_new(0x00280100, "US", 8)  # Bits Allocated
+    ds.add_new(0x00280101, "US", 8)  # Bits Stored
+    ds.add_new(0x00280102, "US", 7)  # High Bit
+    ds.add_new(0x00280103, "US", 0)  # Pixel Representation
+    ds.PixelData = pixel_array.tobytes()
+
+    ds.save_as(filepath)
+    file_object_with_missing_encoding_format.encoding_formats = [encoding_format]
+    operation = Read(
+        operations=operations(),
+        node=file_object_with_missing_encoding_format,
+        folder=tmpdir,
+        fields=(),
+    )
+    content = operation.call(Path(filepath=filepath, fullpath=filepath))
+    assert not content.empty
 
 
 def test_pickable():

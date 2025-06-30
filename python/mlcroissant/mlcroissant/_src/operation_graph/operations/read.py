@@ -10,6 +10,7 @@ import pathlib
 from etils import epath
 import numpy as np
 import pandas as pd
+import pydicom
 
 from mlcroissant._src.core.constants import EncodingFormat
 from mlcroissant._src.core.git import download_git_lfs_file
@@ -88,13 +89,32 @@ def _read_arff_file(filepath: str | io.StringIO | epath.Path) -> pd.DataFrame:
     if scipy is None:
         raise NotImplementedError(INSTALL_MESSAGE)
 
-    data, _ = scipy.io.arff.loadarff(filepath)
+    with open(filepath, "r") as f:
+        data, _ = scipy.io.arff.loadarff(f)
     if not isinstance(data, np.ndarray):
         raise ValueError(
             "The loaded data from scipy.io.arff does not have the expected"
             " type (a numpy array). Please ensure the ARFF file is valid."
         )
     return pd.DataFrame(data)
+
+
+def _read_dicom_file(filepath: epath.Path) -> pd.DataFrame:
+    """Reads a file in DICOM format and returns it as a pandas DataFrame."""
+    try:
+        deps.pydicom
+    except ImportError as e:
+        raise ImportError(
+            "Missing dependency to read DICOM files. pydicom is not installed."
+            " Please, install `pip install mlcroissant[dicom]`."
+        ) from e
+    ds = deps.pydicom.dcmread(filepath)
+    pixel_array = ds.pixel_array
+    return pd.DataFrame(
+        {
+            FileProperty.content: [pixel_array.tobytes()],
+        }
+    )
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -115,11 +135,13 @@ class Read(Operation):
         reading_method = _reading_method(self.node, self.fields)
         if EncodingFormat.ARFF in encoding_formats:
             return _read_arff_file(filepath)
+        elif EncodingFormat.DICOM in encoding_formats:
+            return _read_dicom_file(filepath)
 
         with filepath.open("rb") as file:
             for encoding_format in encoding_formats:
                 # TODO(https://github.com/mlcommons/croissant/issues/635).
-                if filepath.suffix == ".gz":
+                if str(filepath).endswith(".gz"):
                     file = gzip.open(file, "rt", newline="")
                 if encoding_format == EncodingFormat.CSV:
                     return pd.read_csv(file)
@@ -131,9 +153,11 @@ class Read(Operation):
                         return parse_json_content(json_content, self.fields)
                     else:
                         # Raw files are returned as a one-line pd.DataFrame.
-                        return pd.DataFrame({
-                            FileProperty.content: [json_content],
-                        })
+                        return pd.DataFrame(
+                            {
+                                FileProperty.content: [json_content],
+                            }
+                        )
                 elif encoding_format == EncodingFormat.JSON_LINES:
                     return pd.read_json(file, lines=True)
                 elif encoding_format == EncodingFormat.PARQUET:
@@ -155,16 +179,21 @@ class Read(Operation):
                             filepath, header=None, names=[FileProperty.lines]
                         )
                     else:
-                        return pd.DataFrame({
-                            FileProperty.content: [file.read()],
-                        })
+                        return pd.DataFrame(
+                            {
+                                FileProperty.content: [file.read()],
+                            }
+                        )
                 elif (
                     encoding_format == EncodingFormat.MP3
                     or encoding_format == EncodingFormat.JPG
+                    or encoding_format == EncodingFormat.DICOM
                 ):
-                    return pd.DataFrame({
-                        FileProperty.content: [file.read()],
-                    })
+                    return pd.DataFrame(
+                        {
+                            FileProperty.content: [file.read()],
+                        }
+                    )
             raise ValueError(
                 f"None of the provided encoding formats: {encoding_format} for file"
                 f" {filepath} returned a valid pandas dataframe."

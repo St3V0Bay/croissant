@@ -21,7 +21,8 @@ authors = [
 # Installed locally with `pip install -e .`
 dependencies = [
   "absl-py",
-  "etils[epath]>=1.7.0",
+    "absl-py",
+    "etils[epath]>=1.7.0",
   "jsonpath-rw",
   "networkx",
   "pandas",
@@ -67,6 +68,7 @@ beam = [
 ]
 git = ["GitPython"]
 image = ["Pillow"]
+dicom = ["pydicom>=2.4.0"]
 parquet = ["pyarrow"]
 
 [project.scripts]
@@ -98,7 +100,7 @@ module = [
   "jsonpath_rw",
   "librosa",
   "networkx",
-  "pandas",
+    "pandas>=2.0.0",
   "pillow",
   "scipy",
   "torchdata",

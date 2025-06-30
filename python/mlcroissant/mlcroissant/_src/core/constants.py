@@ -226,6 +226,7 @@ class EncodingFormat:
     CSV = "text/csv"
     GIT = "git+https"
     JPG = "image/jpeg"
+    DICOM = "image/dicom"
     JSON = "application/json"
     JSON_LINES = "application/jsonlines"
     MP3 = "audio/mpeg"
