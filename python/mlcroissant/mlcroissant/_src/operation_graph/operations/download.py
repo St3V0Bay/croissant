@@ -1,5 +1,6 @@
 """Download operation module."""
 
+import certifi
 import base64
 import dataclasses
 import hashlib
@@ -186,7 +187,11 @@ class Download(Operation):
         content_url = self.node.content_url
         assert content_url, "Content URL is None."
         response = requests.get(
-            content_url, stream=True, timeout=10, auth=get_basic_auth_from_env()
+            content_url,
+            stream=True,
+            timeout=10,
+            auth=get_basic_auth_from_env(),
+            verify=certifi.where(),
         )
         response.raise_for_status()
         total = int(response.headers.get("Content-Length", 0))
