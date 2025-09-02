@@ -10,7 +10,6 @@ import pathlib
 from etils import epath
 import numpy as np
 import pandas as pd
-import pydicom
 
 from mlcroissant._src.core.constants import EncodingFormat
 from mlcroissant._src.core.git import download_git_lfs_file
@@ -187,7 +186,6 @@ class Read(Operation):
                 elif (
                     encoding_format == EncodingFormat.MP3
                     or encoding_format == EncodingFormat.JPG
-                    or encoding_format == EncodingFormat.DICOM
                 ):
                     return pd.DataFrame(
                         {

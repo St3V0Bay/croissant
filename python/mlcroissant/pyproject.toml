@@ -21,8 +21,7 @@ authors = [
 # Installed locally with `pip install -e .`
 dependencies = [
   "absl-py",
-    "absl-py",
-    "etils[epath]>=1.7.0",
+  "etils[epath]>=1.7.0",
   "jsonpath-rw",
   "networkx",
   "pandas",
@@ -50,6 +49,7 @@ dev = [
   "mlcroissant[beam]",
   "mlcroissant[git]",
   "mlcroissant[image]",
+  "mlcroissant[dicom]",
   "mlcroissant[parquet]",
   "mypy",
   "pyflakes",

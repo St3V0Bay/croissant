@@ -144,3 +144,12 @@ health/dbs/
 health/logs/
 health/setup.py
 health/twistd.pid
+
+# Local DICOM samples and archives
+/DICOM/
+/DICOM 2/
+/DICOM.zip
+/*.dcm
+
+# Stray scripts
+python/mlcroissant/get-pip.py
