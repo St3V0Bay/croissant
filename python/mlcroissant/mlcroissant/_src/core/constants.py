@@ -79,6 +79,13 @@ ML_COMMONS_SOURCE = lambda ctx: ML_COMMONS(ctx).source
 ML_COMMONS_SUB_FIELD = lambda ctx: ML_COMMONS(ctx).subField
 ML_COMMONS_SUB_FIELD_TYPE = lambda ctx: ML_COMMONS(ctx).SubField
 ML_COMMONS_TRANSFORM = lambda ctx: ML_COMMONS(ctx).transform
+# WSI patch extraction (Croissant extension)
+ML_COMMONS_WSI_PATCH = lambda ctx: ML_COMMONS(ctx).wsiPatch
+ML_COMMONS_WSI_LEVEL = lambda ctx: ML_COMMONS(ctx).wsiLevel
+ML_COMMONS_WSI_X_COLUMN = lambda ctx: ML_COMMONS(ctx).wsiXColumn
+ML_COMMONS_WSI_Y_COLUMN = lambda ctx: ML_COMMONS(ctx).wsiYColumn
+ML_COMMONS_WSI_WIDTH_COLUMN = lambda ctx: ML_COMMONS(ctx).wsiWidthColumn
+ML_COMMONS_WSI_HEIGHT_COLUMN = lambda ctx: ML_COMMONS(ctx).wsiHeightColumn
 
 # Croissant RAI extension
 # V1.0 namespace
@@ -202,6 +209,13 @@ TO_CROISSANT = lambda ctx: {
     SCHEMA_ORG_SHA256: "sha256",
     SCHEMA_ORG_URL: "url",
     SCHEMA_ORG_VERSION: "version",
+    # WSI patch extraction mapping
+    ML_COMMONS_WSI_PATCH(ctx): "wsi_patch",
+    ML_COMMONS_WSI_LEVEL(ctx): "wsi_level",
+    ML_COMMONS_WSI_X_COLUMN(ctx): "wsi_x_column",
+    ML_COMMONS_WSI_Y_COLUMN(ctx): "wsi_y_column",
+    ML_COMMONS_WSI_WIDTH_COLUMN(ctx): "wsi_width_column",
+    ML_COMMONS_WSI_HEIGHT_COLUMN(ctx): "wsi_height_column",
 }
 
 FROM_CROISSANT = lambda ctx: {v: k for k, v in TO_CROISSANT(ctx).items()}
@@ -234,6 +248,7 @@ class EncodingFormat:
     GIT = "git+https"
     JPG = "image/jpeg"
     DICOM = "image/dicom"
+    WHOLESLIDE = "image/wholeslide"
     JSON = "application/json"
     JSON_LINES = "application/jsonlines"
     MP3 = "audio/mpeg"

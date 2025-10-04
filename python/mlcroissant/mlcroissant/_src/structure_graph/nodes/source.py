@@ -137,6 +137,37 @@ class Transform(Node):
         input_types=[SDO.Text],
         url=constants.ML_COMMONS_SEPARATOR,
     )
+    # WSI patch extraction (optional convenience)
+    wsi_patch: bool | None = mlc_dataclasses.jsonld_field(
+        default=None,
+        input_types=[SDO.Boolean],
+        url=constants.ML_COMMONS_WSI_PATCH,
+    )
+    wsi_level: int | None = mlc_dataclasses.jsonld_field(
+        default=None,
+        input_types=[SDO.Integer],
+        url=constants.ML_COMMONS_WSI_LEVEL,
+    )
+    wsi_x_column: str | None = mlc_dataclasses.jsonld_field(
+        default=None,
+        input_types=[SDO.Text],
+        url=constants.ML_COMMONS_WSI_X_COLUMN,
+    )
+    wsi_y_column: str | None = mlc_dataclasses.jsonld_field(
+        default=None,
+        input_types=[SDO.Text],
+        url=constants.ML_COMMONS_WSI_Y_COLUMN,
+    )
+    wsi_width_column: str | None = mlc_dataclasses.jsonld_field(
+        default=None,
+        input_types=[SDO.Text],
+        url=constants.ML_COMMONS_WSI_WIDTH_COLUMN,
+    )
+    wsi_height_column: str | None = mlc_dataclasses.jsonld_field(
+        default=None,
+        input_types=[SDO.Text],
+        url=constants.ML_COMMONS_WSI_HEIGHT_COLUMN,
+    )
 
 
 @mlc_dataclasses.dataclass

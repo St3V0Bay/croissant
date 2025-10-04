@@ -5,6 +5,7 @@ import enum
 import gzip
 import io
 import json
+import os
 import pathlib
 
 from etils import epath
@@ -132,6 +133,64 @@ def _read_dicom_file(filepath: epath.Path) -> pd.DataFrame:
     return pd.DataFrame({FileProperty.content: [pixel_array]})
 
 
+def _wsi_needs_thumbnail(fields: tuple[Field, ...]) -> bool:
+    """Returns True if any field requests content or ImageObject for WSI."""
+    for field in fields:
+        ex = field.source.extract
+        if ex.file_property == FileProperty.content:
+            return True
+        # If a field is typed as ImageObject, a small thumbnail is acceptable
+        # for preview/visualization.
+        if getattr(field, "data_type", None) is not None:
+            try:
+                from mlcroissant._src.core.constants import DataType
+                if field.data_type == DataType.IMAGE_OBJECT:  # type: ignore[attr-defined]
+                    return True
+            except Exception:
+                pass
+    return False
+
+
+def _read_wsi_file(filepath: epath.Path, fields: tuple[Field, ...]) -> pd.DataFrame:
+    """Reads WSI metadata and an optional thumbnail using OpenSlide.
+
+    - Always returns metadata columns: vendor, properties, dimensions, levels.
+    - Returns a thumbnail Image in FileProperty.content only if requested by fields.
+    """
+    try:
+        slide_mod = deps.openslide
+    except ImportError as e:
+        raise ImportError(
+            "Missing dependency to read whole-slide images. openslide is not installed."
+            " Please, install `pip install mlcroissant[wsi]` (or"
+            " `pip install openslide-python openslide-bin`)."
+        ) from e
+
+    slide = slide_mod.OpenSlide(str(filepath))
+    vendor = slide_mod.OpenSlide.detect_format(str(filepath))
+    props = dict(slide.properties)
+    level_count = slide.level_count
+    level_dims = tuple(slide.level_dimensions)
+    level_downsamples = tuple(slide.level_downsamples)
+    dims = slide.dimensions
+
+    data: dict = {
+        "wsi_properties": [props],
+        "wsi_vendor": [vendor],
+        "wsi_dimensions": [dims],
+        "wsi_level_count": [level_count],
+        "wsi_level_dimensions": [level_dims],
+        "wsi_level_downsamples": [level_downsamples],
+    }
+
+    if _wsi_needs_thumbnail(fields):
+        max_side = int(os.getenv("MLCR_WSI_THUMBNAIL_MAX", "1024"))
+        thumb = slide.get_thumbnail((max_side, max_side))
+        data[FileProperty.content] = [thumb]
+
+    return pd.DataFrame(data)
+
+
 @dataclasses.dataclass(frozen=True, repr=False)
 class Read(Operation):
     """Reads from a file and output a pd.DataFrame."""
@@ -152,6 +211,8 @@ class Read(Operation):
             return _read_arff_file(filepath)
         if EncodingFormat.DICOM in encoding_formats:
             return _read_dicom_file(filepath)
+        if EncodingFormat.WHOLESLIDE in encoding_formats:
+            return _read_wsi_file(filepath, self.fields)
 
         with filepath.open("rb") as file:
             for encoding_format in encoding_formats:

@@ -102,6 +102,12 @@ class OptionalDependencies(object):
         return _try_import("pydicom", package_name="pydicom")
 
     @cached_class_property
+    def openslide(cls) -> types.ModuleType:  # pylint: disable=invalid-name
+        """Cached OpenSlide module (whole-slide images)."""
+        # The Python package is 'openslide-python'; the import name is 'openslide'.
+        return _try_import("openslide", package_name="openslide-python")
+
+    @cached_class_property
     def torchdata_datapipes(cls) -> types.ModuleType:
         """Cached torchdata module."""
         return _try_import("torchdata.datapipes", package_name="torchdata")

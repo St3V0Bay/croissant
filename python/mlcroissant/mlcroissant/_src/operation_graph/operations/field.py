@@ -149,6 +149,41 @@ def _extract_lines(row: pd.Series) -> pd.Series:
     })
 
 
+def _extract_wsi_patch(row: pd.Series, field: Field) -> pd.Series:
+    """Extracts a WSI patch using OpenSlide based on coordinates in row columns.
+
+    The field is expected to have a Transform with wsi_patch=True and the following
+    column specs: wsi_x_column, wsi_y_column, wsi_width_column, wsi_height_column,
+    and an optional wsi_level (default=0).
+    """
+    # Find the first transform with wsi_patch enabled
+    trans = None
+    for t in field.source.transforms:
+        if getattr(t, "wsi_patch", None):
+            trans = t
+            break
+    if trans is None:
+        return row
+
+    try:
+        slide_mod = deps.openslide
+    except Exception as e:  # pragma: no cover
+        raise ImportError(
+            "Missing dependency to read whole-slide images. openslide is not installed."
+        ) from e
+
+    path = row[FileProperty.filepath]
+    x = int(row[getattr(trans, "wsi_x_column")])
+    y = int(row[getattr(trans, "wsi_y_column")])
+    w = int(row[getattr(trans, "wsi_width_column")])
+    h = int(row[getattr(trans, "wsi_height_column")])
+    level = int(getattr(trans, "wsi_level") or 0)
+
+    slide = slide_mod.OpenSlide(str(epath.Path(path)))
+    img = slide.read_region((x, y), level, (w, h))  # PIL Image; leave as-is
+    return pd.Series({**row, FileProperty.content: img})
+
+
 def _extract_value(df: pd.DataFrame, field: Field) -> pd.DataFrame:
     """Extracts the value according to the field rules."""
     source = field.source
@@ -156,6 +191,11 @@ def _extract_value(df: pd.DataFrame, field: Field) -> pd.DataFrame:
     if column_name in df:
         return df
     elif source.extract.file_property == FileProperty.content:
+        # If a WSI patch extraction transform is configured on this field,
+        # extract a region via OpenSlide instead of reading the entire file.
+        for t in source.transforms:
+            if getattr(t, "wsi_patch", None):
+                return df.apply(lambda row: _extract_wsi_patch(row, field), axis=1)
         return df.apply(_read_file, axis=1)
     elif source.extract.file_property in [FileProperty.lines, FileProperty.lineNumbers]:
         df = df.apply(_extract_lines, axis=1)

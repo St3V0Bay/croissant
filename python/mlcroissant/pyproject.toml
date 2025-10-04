@@ -50,6 +50,7 @@ dev = [
   "mlcroissant[git]",
   "mlcroissant[image]",
   "mlcroissant[dicom]",
+  "mlcroissant[wsi]",
   "mlcroissant[parquet]",
   "mypy",
   "pyflakes",
@@ -69,6 +70,7 @@ beam = [
 git = ["GitPython"]
 image = ["Pillow"]
 dicom = ["pydicom>=2.4.0"]
+wsi = ["openslide-python", "openslide-bin"]
 parquet = ["pyarrow"]
 
 [project.scripts]
